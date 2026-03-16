@@ -1,6 +1,6 @@
 program/target
 target
 .idea*
-*.json
 keys/
+Cargo.lock
 *~
