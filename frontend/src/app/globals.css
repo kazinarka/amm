@@ -1,7 +1,57 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
+/* ── Custom theme for Tailwind v4 ── */
+@theme {
+  --color-dark-50: #f5f5f6;
+  --color-dark-100: #e6e6e7;
+  --color-dark-200: #d0d0d2;
+  --color-dark-300: #afafb2;
+  --color-dark-400: #86868b;
+  --color-dark-500: #6b6b70;
+  --color-dark-600: #5b5b60;
+  --color-dark-700: #4e4e51;
+  --color-dark-800: #444446;
+  --color-dark-900: #1c1c1e;
+  --color-dark-950: #0d0d0e;
+
+  --color-accent: #00e5a0;
+  --color-accent-hover: #00cc8e;
+  --color-accent-dim: rgba(0, 229, 160, 0.1);
+  --color-accent-glow: rgba(0, 229, 160, 0.25);
+
+  --color-surface: #16161a;
+  --color-surface-raised: #1e1e23;
+  --color-surface-overlay: #25252b;
+  --color-surface-border: #2a2a30;
+
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  --animate-pulse-glow: pulse-glow 2s ease-in-out infinite;
+  --animate-slide-up: slide-up 0.3s ease-out;
+  --animate-fade-in: fade-in 0.2s ease-out;
+  --animate-shimmer: shimmer 2s linear infinite;
+  --animate-spin-slow: spin 3s linear infinite;
+
+  @keyframes pulse-glow {
+    0%, 100% { box-shadow: 0 0 20px rgba(0, 229, 160, 0.1); }
+    50% { box-shadow: 0 0 40px rgba(0, 229, 160, 0.2); }
+  }
+  @keyframes slide-up {
+    0% { transform: translateY(10px); opacity: 0; }
+    100% { transform: translateY(0); opacity: 1; }
+  }
+  @keyframes fade-in {
+    0% { opacity: 0; }
+    100% { opacity: 1; }
+  }
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+}
+
+/* ── Base styles ── */
 :root {
   --accent: #00e5a0;
   --bg: #0d0d0e;
@@ -24,9 +74,10 @@ body {
   color: #f5f5f6;
   font-family: 'Inter', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* wallet adapter overrides */
+/* ── Wallet adapter overrides ── */
 .wallet-adapter-button {
   background: var(--surface-raised) !important;
   border: 1px solid var(--border) !important;
@@ -58,15 +109,22 @@ body {
   color: #f5f5f6 !important;
 }
 
+/* ── Input cleanup ── */
 input[type="number"]::-webkit-inner-spin-button,
-input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-input[type="number"] { -moz-appearance: textfield; }
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
 
-@layer utilities {
-  .text-gradient {
-    background-clip: text;
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-image: linear-gradient(to right, #00e5a0, #34d399);
-  }
+/* ── Utilities ── */
+@utility text-gradient {
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-image: linear-gradient(to right, #00e5a0, #34d399);
 }
