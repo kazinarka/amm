@@ -1,0 +1,23 @@
+{
+  "name": "amm-devnet-scripts",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "create-tokens": "npx ts-node src/01-create-tokens.ts",
+    "create-config": "npx ts-node src/02-create-config.ts",
+    "create-pool": "npx ts-node src/03-create-pool.ts",
+    "swap": "npx ts-node src/04-swap.ts",
+    "deposit": "npx ts-node src/05-deposit.ts",
+    "withdraw": "npx ts-node src/06-withdraw.ts",
+    "run-all": "npx ts-node src/run-all.ts"
+  },
+  "dependencies": {
+    "@solana/spl-token": "^0.4.14",
+    "@solana/web3.js": "^1.98.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.5.0"
+  }
+}

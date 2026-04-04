@@ -1,0 +1,20 @@
+{
+  "tokenA": {
+    "mint": "CpqxBqnJ1FWpsY2wpQ8UbuGntvuqfPKxT6vFoF24QNqB",
+    "decimals": 6,
+    "symbol": "BREAD"
+  },
+  "tokenB": {
+    "mint": "99GmSRSuhdvjdKvzDyTn8hUhu8HaDVFBE5AHy6DswKbk",
+    "decimals": 6,
+    "symbol": "BUTTER"
+  },
+  "pool": {
+    "amm": "BiohqfhNW5XmsyJVdyKyQTz4yYWZkAL4jGwmn48KD3V3",
+    "marketId": "2UiMDvgsALa3RHkUnCcVgtc2PWKDUZfk37wtpDsWJu4z",
+    "targetOrders": "2anguemomMSrRSAaaxh4Xi8ECApCtuJJstX4EWWzfEPJ",
+    "coinVault": "BJuPcbmuEvrV7yKQDaTk3YGaBxBV7WC7t88vtMmKccfB",
+    "pcVault": "Ao2LJt3ykXWsUT7yAyyfXxEQ8Q76LwidwVFKka2XNzV1",
+    "lpMint": "BSFAcMRB7sUGczin5pqb4hJNaT983TG39GWqk76KjujF"
+  }
+}
