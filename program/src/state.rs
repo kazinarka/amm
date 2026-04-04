@@ -1,7 +1,6 @@
 //! State transition types
 
 use crate::{error::AmmError, math::Calculator};
-use serum_dex::state::ToAlignedBytes;
 use solana_program::{
     account_info::AccountInfo,
     program_error::ProgramError,
@@ -15,10 +14,21 @@ use safe_transmute::{self, trivial::TriviallyTransmutable};
 use serde::{Deserialize, Serialize};
 use std::{
     cell::{Ref, RefMut},
-    convert::identity,
     convert::TryInto,
     mem::size_of,
 };
+
+/// Convert a Pubkey to [u64; 4] (aligned bytes representation).
+/// Replaces the removed serum_dex::state::ToAlignedBytes.
+fn pubkey_to_aligned_bytes(key: &Pubkey) -> [u64; 4] {
+    let bytes = key.to_bytes();
+    [
+        u64::from_le_bytes(bytes[0..8].try_into().unwrap()),
+        u64::from_le_bytes(bytes[8..16].try_into().unwrap()),
+        u64::from_le_bytes(bytes[16..24].try_into().unwrap()),
+        u64::from_le_bytes(bytes[24..32].try_into().unwrap()),
+    ]
+}
 
 pub const TEN_THOUSAND: u64 = 10000;
 pub const MAX_ORDER_LIMIT: usize = 10;
@@ -153,10 +163,11 @@ impl TargetOrders {
     /// init
     #[inline]
     pub fn check_init(&mut self, x: u128, y: u128, owner: &Pubkey) -> Result<(), ProgramError> {
-        if identity(self.owner) != Pubkey::default().to_aligned_bytes() {
+        let current_owner = self.owner;
+        if current_owner != pubkey_to_aligned_bytes(&Pubkey::default()) {
             return Err(AmmError::AlreadyInUse.into());
         }
-        self.owner = owner.to_aligned_bytes();
+        self.owner = pubkey_to_aligned_bytes(owner);
         self.last_order_numerator = 0; // 3
         self.last_order_denominator = 0; // 1
 
@@ -194,7 +205,8 @@ impl TargetOrders {
             return Err(AmmError::ExpectedAccount.into());
         }
         let data = Self::load_mut(account)?;
-        if identity(data.owner) != owner.to_aligned_bytes() {
+        let data_owner = data.owner;
+        if data_owner != pubkey_to_aligned_bytes(owner) {
             return Err(AmmError::InvalidTargetOwner.into());
         }
         Ok(data)
@@ -214,7 +226,8 @@ impl TargetOrders {
             return Err(AmmError::ExpectedAccount.into());
         }
         let data = Self::load(account)?;
-        if identity(data.owner) != owner.to_aligned_bytes() {
+        let data_owner = data.owner;
+        if data_owner != pubkey_to_aligned_bytes(owner) {
             return Err(AmmError::InvalidTargetOwner.into());
         }
         Ok(data)
@@ -224,14 +237,11 @@ impl TargetOrders {
 #[repr(u64)]
 pub enum AmmStatus {
     Uninitialized = 0u64,
-    Initialized = 1u64,
     Disabled = 2u64,
     WithdrawOnly = 3u64,
-    // pool only can add or remove liquidity, can't swap and plan orders
+    // pool only can add or remove liquidity, can't swap
     LiquidityOnly = 4u64,
-    // pool only can add or remove liquidity and plan orders, can't swap
-    OrderBookOnly = 5u64,
-    // pool only can add or remove liquidity and swap, can't plan orders
+    // pool only can add or remove liquidity and swap
     SwapOnly = 6u64,
     // pool status after created and will auto update to SwapOnly during swap after open_time
     WaitingTrade = 7u64,
@@ -240,11 +250,9 @@ impl AmmStatus {
     pub fn from_u64(status: u64) -> Self {
         match status {
             0u64 => AmmStatus::Uninitialized,
-            1u64 => AmmStatus::Initialized,
             2u64 => AmmStatus::Disabled,
             3u64 => AmmStatus::WithdrawOnly,
             4u64 => AmmStatus::LiquidityOnly,
-            5u64 => AmmStatus::OrderBookOnly,
             6u64 => AmmStatus::SwapOnly,
             7u64 => AmmStatus::WaitingTrade,
             _ => unreachable!(),
@@ -254,18 +262,16 @@ impl AmmStatus {
     pub fn into_u64(&self) -> u64 {
         match self {
             AmmStatus::Uninitialized => 0u64,
-            AmmStatus::Initialized => 1u64,
             AmmStatus::Disabled => 2u64,
             AmmStatus::WithdrawOnly => 3u64,
             AmmStatus::LiquidityOnly => 4u64,
-            AmmStatus::OrderBookOnly => 5u64,
             AmmStatus::SwapOnly => 6u64,
             AmmStatus::WaitingTrade => 7u64,
         }
     }
     pub fn valid_status(status: u64) -> bool {
         match status {
-            1u64 | 2u64 | 3u64 | 4u64 | 5u64 | 6u64 | 7u64 => return true,
+            2u64 | 3u64 | 4u64 | 6u64 | 7u64 => return true,
             _ => return false,
         }
     }
@@ -273,11 +279,9 @@ impl AmmStatus {
     pub fn deposit_permission(&self) -> bool {
         match self {
             AmmStatus::Uninitialized => false,
-            AmmStatus::Initialized => true,
             AmmStatus::Disabled => false,
             AmmStatus::WithdrawOnly => false,
             AmmStatus::LiquidityOnly => true,
-            AmmStatus::OrderBookOnly => true,
             AmmStatus::SwapOnly => true,
             AmmStatus::WaitingTrade => true,
         }
@@ -286,11 +290,9 @@ impl AmmStatus {
     pub fn withdraw_permission(&self) -> bool {
         match self {
             AmmStatus::Uninitialized => false,
-            AmmStatus::Initialized => true,
             AmmStatus::Disabled => false,
             AmmStatus::WithdrawOnly => true,
             AmmStatus::LiquidityOnly => true,
-            AmmStatus::OrderBookOnly => true,
             AmmStatus::SwapOnly => true,
             AmmStatus::WaitingTrade => true,
         }
@@ -299,26 +301,11 @@ impl AmmStatus {
     pub fn swap_permission(&self) -> bool {
         match self {
             AmmStatus::Uninitialized => false,
-            AmmStatus::Initialized => true,
             AmmStatus::Disabled => false,
             AmmStatus::WithdrawOnly => false,
             AmmStatus::LiquidityOnly => false,
-            AmmStatus::OrderBookOnly => false,
             AmmStatus::SwapOnly => true,
             AmmStatus::WaitingTrade => true,
-        }
-    }
-
-    pub fn orderbook_permission(&self) -> bool {
-        match self {
-            AmmStatus::Uninitialized => false,
-            AmmStatus::Initialized => true,
-            AmmStatus::Disabled => false,
-            AmmStatus::WithdrawOnly => false,
-            AmmStatus::LiquidityOnly => false,
-            AmmStatus::OrderBookOnly => true,
-            AmmStatus::SwapOnly => false,
-            AmmStatus::WaitingTrade => false,
         }
     }
 }
@@ -327,22 +314,12 @@ impl AmmStatus {
 pub enum AmmState {
     InvlidState = 0u64,
     IdleState = 1u64,
-    CancelAllOrdersState = 2u64,
-    PlanOrdersState = 3u64,
-    CancelOrderState = 4u64,
-    PlaceOrdersState = 5u64,
-    PurgeOrderState = 6u64,
 }
 impl AmmState {
     pub fn from_u64(state: u64) -> Self {
         match state {
             0u64 => AmmState::InvlidState,
             1u64 => AmmState::IdleState,
-            2u64 => AmmState::CancelAllOrdersState,
-            3u64 => AmmState::PlanOrdersState,
-            4u64 => AmmState::CancelOrderState,
-            5u64 => AmmState::PlaceOrdersState,
-            6u64 => AmmState::PurgeOrderState,
             _ => unreachable!(),
         }
     }
@@ -351,16 +328,11 @@ impl AmmState {
         match self {
             AmmState::InvlidState => 0u64,
             AmmState::IdleState => 1u64,
-            AmmState::CancelAllOrdersState => 2u64,
-            AmmState::PlanOrdersState => 3u64,
-            AmmState::CancelOrderState => 4u64,
-            AmmState::PlaceOrdersState => 5u64,
-            AmmState::PurgeOrderState => 6u64,
         }
     }
     pub fn valid_state(state: u64) -> bool {
         match state {
-            0u64 | 1u64 | 2u64 | 3u64 | 4u64 | 5u64 | 6u64 => return true,
+            0u64 | 1u64 => return true,
             _ => return false,
         }
     }
@@ -371,45 +343,17 @@ impl AmmState {
 #[repr(u64)]
 pub enum AmmParams {
     Status = 0u64,
-    State = 1u64,
-    OrderNum = 2u64,
-    Depth = 3u64,
-    AmountWave = 4u64,
-    MinPriceMultiplier = 5u64,
-    MaxPriceMultiplier = 6u64,
-    MinSize = 7u64,
-    VolMaxCutRatio = 8u64,
     Fees = 9u64,
     AmmOwner = 10u64,
     SetOpenTime = 11u64,
-    LastOrderDistance = 12u64,
-    InitOrderDepth = 13u64,
-    SetSwitchTime = 14u64,
-    ClearOpenTime = 15u64,
-    Seperate = 16u64,
-    UpdateOpenOrder = 17u64,
 }
 impl AmmParams {
     pub fn from_u64(state: u64) -> Self {
         match state {
             0u64 => AmmParams::Status,
-            1u64 => AmmParams::State,
-            2u64 => AmmParams::OrderNum,
-            3u64 => AmmParams::Depth,
-            4u64 => AmmParams::AmountWave,
-            5u64 => AmmParams::MinPriceMultiplier,
-            6u64 => AmmParams::MaxPriceMultiplier,
-            7u64 => AmmParams::MinSize,
-            8u64 => AmmParams::VolMaxCutRatio,
             9u64 => AmmParams::Fees,
             10u64 => AmmParams::AmmOwner,
             11u64 => AmmParams::SetOpenTime,
-            12u64 => AmmParams::LastOrderDistance,
-            13u64 => AmmParams::InitOrderDepth,
-            14u64 => AmmParams::SetSwitchTime,
-            15u64 => AmmParams::ClearOpenTime,
-            16u64 => AmmParams::Seperate,
-            17u64 => AmmParams::UpdateOpenOrder,
             _ => unreachable!(),
         }
     }
@@ -417,23 +361,9 @@ impl AmmParams {
     pub fn into_u64(&self) -> u64 {
         match self {
             AmmParams::Status => 0u64,
-            AmmParams::State => 1u64,
-            AmmParams::OrderNum => 2u64,
-            AmmParams::Depth => 3u64,
-            AmmParams::AmountWave => 4u64,
-            AmmParams::MinPriceMultiplier => 5u64,
-            AmmParams::MaxPriceMultiplier => 6u64,
-            AmmParams::MinSize => 7u64,
-            AmmParams::VolMaxCutRatio => 8u64,
             AmmParams::Fees => 9u64,
             AmmParams::AmmOwner => 10u64,
             AmmParams::SetOpenTime => 11u64,
-            AmmParams::LastOrderDistance => 12u64,
-            AmmParams::InitOrderDepth => 13u64,
-            AmmParams::SetSwitchTime => 14u64,
-            AmmParams::ClearOpenTime => 15u64,
-            AmmParams::Seperate => 16u64,
-            AmmParams::UpdateOpenOrder => 17u64,
         }
     }
 }
@@ -687,12 +617,12 @@ pub struct AmmInfo {
     pub pc_vault_mint: Pubkey,
     /// lp mint
     pub lp_mint: Pubkey,
-    /// open_orders key
-    pub open_orders: Pubkey,
-    /// market key
-    pub market: Pubkey,
-    /// market program key
-    pub market_program: Pubkey,
+    /// open_orders key (unused, kept for struct size compatibility)
+    pub padding_open_orders: Pubkey,
+    /// market_id key (the random keypair used to seed PDAs)
+    pub market_id: Pubkey,
+    /// market program key (unused, kept for struct size compatibility)
+    pub padding_market_program: Pubkey,
     /// target_orders key
     pub target_orders: Pubkey,
     /// padding
@@ -701,8 +631,8 @@ pub struct AmmInfo {
     pub amm_owner: Pubkey,
     /// pool lp amount
     pub lp_amount: u64,
-    /// client order id
-    pub client_order_id: u64,
+    /// client order id (unused, kept for struct size compatibility)
+    pub padding_client_order_id: u64,
     /// recent epoch
     pub recent_epoch: u64,
     /// padding
@@ -828,16 +758,10 @@ impl AmmInfo {
             .checked_div(1000)
             .unwrap();
         self.coin_lot_size = coin_lot_size;
-        self.pc_lot_size = Calculator::convert_in_pc_lot_size(
-            pc_decimals,
-            coin_decimals,
-            pc_lot_size,
-            coin_lot_size,
-            self.sys_decimal_value,
-        );
+        self.pc_lot_size = pc_lot_size;
         self.min_price_multiplier = 1;
         self.max_price_multiplier = 1000000000;
-        self.client_order_id = 0;
+        self.padding_client_order_id = 0;
         self.padding1 = Zeroable::zeroed();
         self.recent_epoch = get_recent_epoch().unwrap();
         self.padding2 = Zeroable::zeroed();
@@ -845,13 +769,6 @@ impl AmmInfo {
         Ok(())
     }
 
-    pub fn incr_client_order_id(&mut self) -> u64 {
-        self.client_order_id = self.client_order_id.wrapping_add(1);
-        if self.client_order_id == 0 {
-            self.client_order_id += 1;
-        }
-        self.client_order_id
-    }
 }
 
 /// State of amm config account
@@ -906,13 +823,6 @@ impl AmmConfig {
     }
 }
 
-#[repr(C)]
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct LastOrderDistance {
-    pub last_order_numerator: u64,
-    pub last_order_denominator: u64,
-}
-
 /// For simulateTransaction to get instruction data
 #[cfg_attr(feature = "client", derive(Debug))]
 #[derive(Copy, Clone)]
@@ -921,7 +831,6 @@ pub enum SimulateParams {
     PoolInfo = 0u64,
     SwapBaseInInfo = 1u64,
     SwapBaseOutInfo = 2u64,
-    RunCrankInfo = 3u64,
 }
 impl SimulateParams {
     pub fn from_u64(flag: u64) -> Self {
@@ -929,7 +838,6 @@ impl SimulateParams {
             0u64 => SimulateParams::PoolInfo,
             1u64 => SimulateParams::SwapBaseInInfo,
             2u64 => SimulateParams::SwapBaseOutInfo,
-            3u64 => SimulateParams::RunCrankInfo,
             _ => unreachable!(),
         }
     }
@@ -939,23 +847,7 @@ impl SimulateParams {
             SimulateParams::PoolInfo => 0u64,
             SimulateParams::SwapBaseInInfo => 1u64,
             SimulateParams::SwapBaseOutInfo => 2u64,
-            SimulateParams::RunCrankInfo => 3u64,
         }
-    }
-}
-
-#[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize)]
-pub struct RunCrankData {
-    pub status: u64,
-    pub state: u64,
-    pub run_crank: bool,
-}
-impl RunCrankData {
-    pub fn to_json(&self) -> String {
-        serde_json::to_string(self).unwrap()
-    }
-    pub fn from_json(data: &str) -> Self {
-        serde_json::from_str(data).unwrap()
     }
 }
 
@@ -1292,11 +1184,11 @@ mod test {
         assert_eq!(pc_vault_mint, unpack_pc_vault_mint);
         let unpack_lp_mint = unpack_data.lp_mint;
         assert_eq!(lp_mint, unpack_lp_mint);
-        let unpack_open_orders = unpack_data.open_orders;
+        let unpack_open_orders = unpack_data.padding_open_orders;
         assert_eq!(open_orders, unpack_open_orders);
-        let unpack_market = unpack_data.market;
+        let unpack_market = unpack_data.market_id;
         assert_eq!(market, unpack_market);
-        let unpack_market_program = unpack_data.market_program;
+        let unpack_market_program = unpack_data.padding_market_program;
         assert_eq!(market_program, unpack_market_program);
         let unpack_target_orders = unpack_data.target_orders;
         assert_eq!(target_orders, unpack_target_orders);
@@ -1308,7 +1200,7 @@ mod test {
         assert_eq!(amm_owner, unpack_amm_owner);
         let unpack_lp_amount = unpack_data.lp_amount;
         assert_eq!(lp_amount, unpack_lp_amount);
-        let unpack_client_order_id = unpack_data.client_order_id;
+        let unpack_client_order_id = unpack_data.padding_client_order_id;
         assert_eq!(client_order_id, unpack_client_order_id);
         let unpack_recent_epoch = unpack_data.recent_epoch;
         assert_eq!(recent_epoch, unpack_recent_epoch);

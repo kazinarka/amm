@@ -46,15 +46,15 @@ pub enum AmmError {
     InvalidPoolMint,
 
     // 10
-    /// The open_orders provided doesn't match the open_orders in in the AmmInfo.
-    #[error("InvalidOpenOrders")]
-    InvalidOpenOrders,
-    /// The market provided doesn't match the market in the AmmInfo.
-    #[error("InvalidMarket")]
-    InvalidMarket,
-    /// The market program provided doesn't match the market program in the AmmInfo.
-    #[error("InvalidMarketProgram")]
-    InvalidMarketProgram,
+    /// Reserved (was InvalidOpenOrders)
+    #[error("Reserved10")]
+    Reserved10,
+    /// The market_id provided doesn't match the market_id in the AmmInfo.
+    #[error("InvalidMarketId")]
+    InvalidMarketId,
+    /// Reserved (was InvalidMarketProgram)
+    #[error("Reserved12")]
+    Reserved12,
     /// The target_orders provided doesn't match the target_orders in the AmmInfo.
     #[error("InvalidTargetOrders")]
     InvalidTargetOrders,
@@ -154,23 +154,23 @@ pub enum AmmError {
     /// ConversionFailure
     #[error("Conversion to u64 failed with an overflow or underflow")]
     ConversionFailure,
-    /// The user token input does not match amm
+    // The user token input does not match amm
     #[error("user token input does not match amm")]
     InvalidUserToken,
-    // The srm_token's mint provided doesn't match the pc_mint's key.
-    #[error("InvalidSrmMint")]
-    InvalidSrmMint,
-    /// The srm_token provided doesn't match the srm_token in the program.
-    #[error("InvalidSrmToken")]
-    InvalidSrmToken,
+    /// Reserved (was InvalidSrmMint)
+    #[error("Reserved43")]
+    Reserved43,
+    /// Reserved (was InvalidSrmToken)
+    #[error("Reserved44")]
+    Reserved44,
 
     // 45
-    /// TooManyOpenOrders
-    #[error("TooManyOpenOrders")]
-    TooManyOpenOrders,
-    /// OrderAtSlotIsPlaced
-    #[error("OrderAtSlotIsPlaced")]
-    OrderAtSlotIsPlaced,
+    /// Reserved (was TooManyOpenOrders)
+    #[error("Reserved45")]
+    Reserved45,
+    /// Reserved (was OrderAtSlotIsPlaced)
+    #[error("Reserved46")]
+    Reserved46,
     /// InvalidSysProgramAddress
     #[error("InvalidSysProgramAddress")]
     InvalidSysProgramAddress,
@@ -191,9 +191,9 @@ pub enum AmmError {
     /// The pool token mint has a freeze authority.
     #[error("Pool token mint has a freeze authority")]
     InvalidFreezeAuthority,
-    // The referrer_pc_wallet's mint provided doesn't match the pc_mint's key.
-    #[error("InvalidReferPCMint")]
-    InvalidReferPCMint,
+    /// Reserved (was InvalidReferPCMint)
+    #[error("Reserved53")]
+    Reserved53,
     /// InvalidConfigAccount
     #[error("InvalidConfigAccount")]
     InvalidConfigAccount,
@@ -202,9 +202,9 @@ pub enum AmmError {
     /// RepeatCreateConfigAccount
     #[error("Repeat create config account")]
     RepeatCreateConfigAccount,
-    /// MarketLotSizeIsTooLarge
-    #[error("Market lotSize is too large")]
-    MarketLotSizeIsTooLarge,
+    /// Reserved (was MarketLotSizeIsTooLarge)
+    #[error("Reserved56")]
+    Reserved56,
     /// Init lp amount is too less.
     #[error("Init lp amount is too less(Because 10**lp_decimals amount lp will be locked)")]
     InitLpAmountTooLess,
@@ -245,9 +245,9 @@ impl PrintProgramError for AmmError {
             AmmError::InvalidDestTokenCoin => msg!("Error: InvalidDestTokenCoin"),
             AmmError::InvalidDestTokenPC => msg!("Error: InvalidDestTokenPC"),
             AmmError::InvalidPoolMint => msg!("Error: InvalidPoolMint"),
-            AmmError::InvalidOpenOrders => msg!("Error: InvalidOpenOrders"),
-            AmmError::InvalidMarket => msg!("Error: InvalidMarket"),
-            AmmError::InvalidMarketProgram => msg!("Error: InvalidMarketProgram"),
+            AmmError::Reserved10 => msg!("Error: Reserved10"),
+            AmmError::InvalidMarketId => msg!("Error: InvalidMarketId"),
+            AmmError::Reserved12 => msg!("Error: Reserved12"),
 
             AmmError::InvalidTargetOrders => msg!("Error: InvalidTargetOrders"),
             AmmError::AccountNeedWriteable => msg!("Error: AccountNeedWriteable"),
@@ -285,10 +285,10 @@ impl PrintProgramError for AmmError {
             AmmError::ConversionFailure => msg!("Error: Conversion to or from u64 failed."),
             AmmError::InvalidUserToken => msg!("Error: User token input does not match amm"),
 
-            AmmError::InvalidSrmMint => msg!("Error: InvalidSrmMint"),
-            AmmError::InvalidSrmToken => msg!("Error: InvalidSrmToken"),
-            AmmError::TooManyOpenOrders => msg!("Error: TooManyOpenOrders"),
-            AmmError::OrderAtSlotIsPlaced => msg!("Error: OrderAtSlotIsPlaced"),
+            AmmError::Reserved43 => msg!("Error: Reserved43"),
+            AmmError::Reserved44 => msg!("Error: Reserved44"),
+            AmmError::Reserved45 => msg!("Error: Reserved45"),
+            AmmError::Reserved46 => msg!("Error: Reserved46"),
             AmmError::InvalidSysProgramAddress => msg!("Error: InvalidSysProgramAddress"),
 
             AmmError::InvalidFee => msg!("Error: InvalidFee"),
@@ -298,10 +298,10 @@ impl PrintProgramError for AmmError {
             AmmError::InvalidFreezeAuthority => {
                 msg!("Error: Pool token mint has a freeze authority")
             }
-            AmmError::InvalidReferPCMint => msg!("Error: InvalidReferPCMint"),
+            AmmError::Reserved53 => msg!("Error: Reserved53"),
             AmmError::InvalidConfigAccount => msg!("Error: InvalidConfigAccount"),
             AmmError::RepeatCreateConfigAccount => msg!("Error: RepeatCreateConfigAccount"),
-            AmmError::MarketLotSizeIsTooLarge => msg!("Error: Market lotSize is too large"),
+            AmmError::Reserved56 => msg!("Error: Reserved56"),
             AmmError::InitLpAmountTooLess => msg!("Error: Init lp amount is too less(Because 10**lp_decimals amount lp will be locked)"),
             AmmError::UnknownAmmError => msg!("Error: UnknownAmmError"),
         }
