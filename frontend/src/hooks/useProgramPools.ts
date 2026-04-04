@@ -9,6 +9,11 @@ import { NETWORK, READ_RPC_ENDPOINT } from "@/constants";
 
 const POLL_INTERVAL_MS = 20_000;
 
+/** Cheap structural fingerprint so we can skip setPools when data is identical. */
+function poolsFingerprint(pools: DiscoveredAmmPool[]): string {
+  return pools.map((p) => p.poolId).join(",");
+}
+
 interface UseProgramPoolsResult {
   pools: DiscoveredAmmPool[];
   tokens: TokenOption[];
@@ -34,6 +39,7 @@ export function useProgramPools(): UseProgramPoolsResult {
   const [error, setError] = useState<string | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const hasFetchedRef = useRef(false);
+  const fingerprintRef = useRef("");
   // Use a ref so the polling callback always reads the latest connection
   // without recreating the callback (and therefore restarting the interval).
   const connectionRef = useRef<Connection>(connection);
@@ -43,7 +49,15 @@ export function useProgramPools(): UseProgramPoolsResult {
     try {
       if (!hasFetchedRef.current) setLoading(true);
       const nextPools = await discoverAmmPools(connectionRef.current);
-      setPools(nextPools);
+
+      // Only update state when the pool list actually changed — avoids
+      // cascading re-renders in every consumer on each poll tick.
+      const fp = poolsFingerprint(nextPools);
+      if (fp !== fingerprintRef.current) {
+        fingerprintRef.current = fp;
+        setPools(nextPools);
+      }
+
       setError(null);
       hasFetchedRef.current = true;
     } catch (err) {

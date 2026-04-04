@@ -63,6 +63,10 @@ const STATUS_LABELS: Record<string, string> = {
   confirming: "Confirming...",
 };
 
+// Stable no-op so the read-only Buy input doesn't get a new function reference
+// on every render (which would defeat React.memo on TokenInput).
+const NOOP = () => {};
+
 // ─── Callbacks passed from the outer shell into the memoised body ───
 interface SwapCardBodyProps {
   pools: DiscoveredAmmPool[];
@@ -160,16 +164,31 @@ const SwapCardBody = memo(function SwapCardBody({
     onSwitchTokens();
   }, [onSwitchTokens, resetStatus]);
 
-  function applyQuickAmount(preset: { value?: string; percent?: number }) {
-    if (preset.value) {
-      setInputAmount(preset.value);
-      return;
-    }
+  const handleAmountChange = useCallback(
+    (value: string) => {
+      setInputAmount(value);
+      resetStatus();
+    },
+    [resetStatus]
+  );
 
-    if (!sellToken || preset.percent === undefined) return;
-    const amount = (sellBalance * BigInt(preset.percent)) / 100n;
-    setInputAmount(formatTokenAmount(amount, sellToken.decimals));
-  }
+  const handleCloseSettings = useCallback(() => setShowSettings(false), []);
+
+  const presets = useMemo(() => quickAmountPresets(sellToken), [sellToken]);
+
+  const applyQuickAmount = useCallback(
+    (preset: { value?: string; percent?: number }) => {
+      if (preset.value) {
+        setInputAmount(preset.value);
+        return;
+      }
+
+      if (!sellToken || preset.percent === undefined) return;
+      const amount = (sellBalance * BigInt(preset.percent)) / 100n;
+      setInputAmount(formatTokenAmount(amount, sellToken.decimals));
+    },
+    [sellToken, sellBalance]
+  );
 
   return (
     <div
@@ -196,7 +215,7 @@ const SwapCardBody = memo(function SwapCardBody({
           <SettingsPanel
             settings={settings}
             onSettingsChange={onSettingsChange}
-            onClose={() => setShowSettings(false)}
+            onClose={handleCloseSettings}
           />
         )}
       </AnimatePresence>
@@ -229,10 +248,7 @@ const SwapCardBody = memo(function SwapCardBody({
             logoURI={sellToken?.logoURI ?? FALLBACK_LOGO}
             balance={sellBalanceFormatted}
             amount={inputAmount}
-            onAmountChange={(value) => {
-              setInputAmount(value);
-              resetStatus();
-            }}
+            onAmountChange={handleAmountChange}
             onTokenClick={onOpenSellPicker}
             tokenClickable
             showBalance
@@ -258,7 +274,7 @@ const SwapCardBody = memo(function SwapCardBody({
             logoURI={buyToken?.logoURI ?? FALLBACK_LOGO}
             balance={buyBalanceFormatted}
             amount={outputAmount}
-            onAmountChange={() => undefined}
+            onAmountChange={NOOP}
             onTokenClick={onOpenBuyPicker}
             tokenClickable
             readOnly
@@ -267,7 +283,7 @@ const SwapCardBody = memo(function SwapCardBody({
         </div>
 
         <div className="grid grid-cols-4 gap-2">
-          {quickAmountPresets(sellToken).map((preset) => (
+          {presets.map((preset) => (
             <button
               key={preset.label}
               onClick={() => applyQuickAmount(preset)}

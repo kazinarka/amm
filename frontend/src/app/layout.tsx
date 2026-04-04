@@ -73,10 +73,11 @@ export default function RootLayout({
               },
             }}
           />
-          {/* Background gradient orbs */}
+          {/* Background gradient orbs — will-change + reduced blur to keep
+              compositor layers cheap and avoid frame drops during interaction. */}
           <div className="fixed inset-0 overflow-hidden pointer-events-none">
-            <div className="absolute -top-40 -right-40 w-80 h-80 bg-accent/5 rounded-full blur-[120px]" />
-            <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-amber-500/5 rounded-full blur-[120px]" />
+            <div className="absolute -top-40 -right-40 w-80 h-80 bg-accent/5 rounded-full blur-3xl will-change-transform" />
+            <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-amber-500/5 rounded-full blur-3xl will-change-transform" />
           </div>
 
           <div className="relative z-10 flex min-h-screen flex-col">

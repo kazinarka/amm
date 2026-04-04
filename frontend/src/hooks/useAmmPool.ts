@@ -8,6 +8,18 @@ import { fetchAmmPool } from "@/lib/amm/pool";
 
 const POLL_INTERVAL_MS = 10_000;
 
+/** Compare the mutable numeric fields that actually change between polls. */
+function poolDataChanged(prev: AmmPoolData | null, next: AmmPoolData | null): boolean {
+  if (prev === null || next === null) return prev !== next;
+  return (
+    prev.coinVaultBalance !== next.coinVaultBalance ||
+    prev.pcVaultBalance !== next.pcVaultBalance ||
+    prev.lpAmount !== next.lpAmount ||
+    prev.needTakePnlCoin !== next.needTakePnlCoin ||
+    prev.needTakePnlPc !== next.needTakePnlPc
+  );
+}
+
 interface UseAmmPoolResult {
   pool: AmmPoolData | null;
   loading: boolean;
@@ -27,6 +39,7 @@ export function useAmmPool(poolId: string | null): UseAmmPoolResult {
   const [error, setError] = useState<string | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const hasFetchedRef = useRef(false);
+  const poolRef = useRef<AmmPoolData | null>(null);
   // Use a ref so the polling callback always reads the latest connection
   // without recreating the callback (and therefore restarting the interval).
   const connectionRef = useRef<Connection>(connection);
@@ -36,6 +49,7 @@ export function useAmmPool(poolId: string | null): UseAmmPoolResult {
     if (!poolId) {
       setPool(null);
       setError(null);
+      poolRef.current = null;
       hasFetchedRef.current = false;
       return;
     }
@@ -46,18 +60,28 @@ export function useAmmPool(poolId: string | null): UseAmmPoolResult {
     } catch {
       setError("Invalid pool address");
       setPool(null);
+      poolRef.current = null;
       return;
     }
 
     try {
       if (!hasFetchedRef.current) setLoading(true);
       const data = await fetchAmmPool(connectionRef.current, pubkey);
-      setPool(data);
+
+      // Only update state when on-chain data actually changed — avoids
+      // cascading re-renders (quote recalc, BigInt math, formatting) on
+      // every poll tick when nothing moved.
+      if (poolDataChanged(poolRef.current, data)) {
+        poolRef.current = data;
+        setPool(data);
+      }
+
       setError(null);
       hasFetchedRef.current = true;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to fetch pool");
       setPool(null);
+      poolRef.current = null;
     } finally {
       setLoading(false);
     }
