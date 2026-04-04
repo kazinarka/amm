@@ -1,12 +1,57 @@
 import type { Metadata } from "next";
+import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
 import { Header } from "@/components/Header";
 import { Toaster } from "react-hot-toast";
 
+const inter = Inter({
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700", "800"],
+  variable: "--font-inter",
+  display: "swap",
+});
+
+const jetBrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  variable: "--font-jetbrains-mono",
+  display: "swap",
+});
+
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+
 export const metadata: Metadata = {
-  title: "AMM Swap",
-  description: "Fast & decentralized token swaps on Solana",
+  metadataBase: new URL(siteUrl),
+  title: "bread.fun",
+  description: "bread.fun — fast & decentralized token swaps on Solana",
+  applicationName: "bread.fun",
+  icons: {
+    icon: [
+      { url: "/bread-icon.png", type: "image/png", sizes: "420x420" },
+      { url: "/favicon.ico" },
+    ],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "420x420", type: "image/png" }],
+    shortcut: ["/bread-icon.png"],
+  },
+  openGraph: {
+    title: "bread.fun",
+    description: "Fast & decentralized token swaps on Solana.",
+    images: [
+      {
+        url: "/bread-brand.png",
+        width: 1500,
+        height: 420,
+        alt: "bread.fun",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "bread.fun",
+    description: "Fast & decentralized token swaps on Solana.",
+    images: ["/bread-brand.png"],
+  },
 };
 
 export default function RootLayout({
@@ -14,12 +59,7 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className="dark">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
-      </head>
-      <body className="min-h-screen bg-dark-950 antialiased">
+      <body className={`${inter.variable} ${jetBrainsMono.variable} min-h-screen bg-dark-950 antialiased`}>
         <Providers>
           <Toaster
             position="bottom-right"
@@ -36,17 +76,14 @@ export default function RootLayout({
           {/* Background gradient orbs */}
           <div className="fixed inset-0 overflow-hidden pointer-events-none">
             <div className="absolute -top-40 -right-40 w-80 h-80 bg-accent/5 rounded-full blur-[120px]" />
-            <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-emerald-500/5 rounded-full blur-[120px]" />
+            <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-amber-500/5 rounded-full blur-[120px]" />
           </div>
 
-          <div className="relative z-10 flex flex-col min-h-screen">
+          <div className="relative z-10 flex min-h-screen flex-col">
             <Header />
-            <main className="flex-1 flex items-start justify-center pt-8 md:pt-16 px-4 pb-20">
+            <main className="flex flex-1 items-start justify-center px-4 pb-10 pt-6 md:px-6 md:pt-10 xl:px-8">
               {children}
             </main>
-            <footer className="text-center py-6 text-sm text-dark-500">
-              Built on Solana
-            </footer>
           </div>
         </Providers>
       </body>

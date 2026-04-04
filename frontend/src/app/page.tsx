@@ -1,9 +1,9 @@
-import { SwapCard } from "@/components/SwapCard";
+import { TradingTerminal } from "@/components/TradingTerminal";
 
 export default function Home() {
   return (
-    <div className="w-full max-w-[460px] animate-slide-up">
-      <SwapCard />
+    <div className="w-full max-w-[540px] animate-slide-up">
+      <TradingTerminal />
     </div>
   );
 }

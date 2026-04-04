@@ -5,9 +5,8 @@ import {
   ConnectionProvider,
   WalletProvider,
 } from "@solana/wallet-adapter-react";
-import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
 import { PhantomWalletAdapter, SolflareWalletAdapter } from "@solana/wallet-adapter-wallets";
-import { RPC_ENDPOINT } from "@/constants";
+import { READ_RPC_ENDPOINT } from "@/constants";
 
 import "@solana/wallet-adapter-react-ui/styles.css";
 
@@ -17,10 +16,19 @@ export function Providers({ children }: { children: ReactNode }) {
     []
   );
 
+  // Stable config object — without this, ConnectionProvider's default
+  // `{ commitment: 'confirmed' }` creates a new reference every render,
+  // causing a new Connection to be created and cascading re-renders to
+  // every hook that reads useConnection().
+  const connectionConfig = useMemo(
+    () => ({ commitment: "confirmed" as const }),
+    []
+  );
+
   return (
-    <ConnectionProvider endpoint={RPC_ENDPOINT}>
+    <ConnectionProvider endpoint={READ_RPC_ENDPOINT} config={connectionConfig}>
       <WalletProvider wallets={wallets} autoConnect>
-        <WalletModalProvider>{children}</WalletModalProvider>
+        {children}
       </WalletProvider>
     </ConnectionProvider>
   );

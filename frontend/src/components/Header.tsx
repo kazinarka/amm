@@ -1,65 +1,53 @@
 "use client";
 
+import Image from "next/image";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { motion } from "framer-motion";
+import { WalletButton } from "./WalletButton";
+
+// Hoisted — avoids creating new objects on every render.
+const HEADER_INITIAL = { y: -20, opacity: 0 } as const;
+const HEADER_ANIMATE = { y: 0, opacity: 1 } as const;
+const HEADER_TRANSITION = { duration: 0.4, ease: "easeOut" } as const;
 
 export function Header() {
   const { connected } = useWallet();
 
   return (
     <motion.header
-      initial={{ y: -20, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      transition={{ duration: 0.4, ease: "easeOut" }}
-      className="sticky top-0 z-50 border-b border-surface-border/50 backdrop-blur-xl bg-dark-950/80"
+      initial={HEADER_INITIAL}
+      animate={HEADER_ANIMATE}
+      transition={HEADER_TRANSITION}
+      className="sticky top-0 z-50 border-b border-surface-border/40 backdrop-blur-xl bg-dark-950/75"
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+      <div className="mx-auto flex h-14 w-full items-center justify-between px-4 sm:h-16 sm:px-6 xl:px-8">
         {/* Logo */}
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-accent to-emerald-500 flex items-center justify-center">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M7 16V4m0 0L3 8m4-4l4 4" />
-              <path d="M17 8v12m0 0l4-4m-4 4l-4-4" />
-            </svg>
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#F6D94B] p-1 shadow-[0_10px_30px_rgba(246,217,75,0.22)] sm:h-11 sm:w-11 sm:p-1.5">
+            <Image
+              src="/bread-loaf-cutout.png"
+              alt="bread.fun"
+              width={579}
+              height={328}
+              priority
+              className="h-auto w-full object-contain"
+            />
           </div>
-          <span className="text-lg font-bold tracking-tight">
-            AMM<span className="text-accent">Swap</span>
-          </span>
+          <div className="min-w-0">
+            <div className="truncate text-base font-semibold tracking-tight text-white sm:text-lg">bread.fun</div>
+          </div>
         </div>
 
-        {/* Nav */}
-        <nav className="hidden md:flex items-center gap-1">
-          <NavLink active>Swap</NavLink>
-          <NavLink>Pools</NavLink>
-          <NavLink>Portfolio</NavLink>
-        </nav>
-
         {/* Wallet */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           {connected && (
-            <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent-dim border border-accent/20">
-              <div className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
-              <span className="text-xs font-medium text-accent">Connected</span>
+            <div className="hidden items-center gap-2 rounded-lg border border-surface-border/50 bg-surface-raised/70 px-3 py-1.5 text-xs text-dark-400 sm:flex">
+              <span className="text-accent">• wallet ready</span>
             </div>
           )}
-          <WalletMultiButton />
+          <WalletButton />
         </div>
       </div>
     </motion.header>
-  );
-}
-
-function NavLink({ children, active }: { children: React.ReactNode; active?: boolean }) {
-  return (
-    <button
-      className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200
-        ${active
-          ? "text-white bg-surface-raised"
-          : "text-dark-400 hover:text-white hover:bg-surface-raised/50"
-        }`}
-    >
-      {children}
-    </button>
   );
 }

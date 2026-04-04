@@ -2,30 +2,81 @@
 
 import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
-import Image from "next/image";
-import { Token } from "@/types";
-import { POPULAR_TOKENS } from "@/constants";
+import { PublicKey } from "@solana/web3.js";
+import { useConnection } from "@solana/wallet-adapter-react";
+import { PoolRegistryEntry } from "@/types";
+import { POOL_REGISTRY } from "@/constants";
+import { isValidAmmPool } from "@/lib/amm/pool";
+import { TokenLogo } from "./TokenLogo";
 
 interface TokenSelectModalProps {
-  onSelect: (token: Token) => void;
+  onSelect: (entry: PoolRegistryEntry) => void;
   onClose: () => void;
-  selectedMint: string;
+  selectedPoolId: string | null;
 }
 
-export function TokenSelectModal({ onSelect, onClose, selectedMint }: TokenSelectModalProps) {
+/**
+ * Pool/token selection modal.
+ *
+ * - Shows configured markets as a list (logo, symbol, name)
+ * - Supports pasting a raw pool address to load any AMM pool
+ * - Validates pasted addresses on-chain before allowing selection
+ */
+export function TokenSelectModal({
+  onSelect,
+  onClose,
+  selectedPoolId,
+}: TokenSelectModalProps) {
+  const { connection } = useConnection();
   const [search, setSearch] = useState("");
+  const [pasteLoading, setPasteLoading] = useState(false);
+  const [pasteError, setPasteError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
 
-  const filteredTokens = POPULAR_TOKENS.filter(
-    (t) =>
-      t.symbol.toLowerCase().includes(search.toLowerCase()) ||
-      t.name.toLowerCase().includes(search.toLowerCase()) ||
-      t.mint.toLowerCase().includes(search.toLowerCase())
+  // Filter registry entries by search
+  const filteredEntries = POOL_REGISTRY.filter(
+    (entry) =>
+      entry.symbol.toLowerCase().includes(search.toLowerCase()) ||
+      entry.name.toLowerCase().includes(search.toLowerCase()) ||
+      entry.poolId.toLowerCase().includes(search.toLowerCase())
   );
+
+  // Check if the search input looks like a pubkey
+  const isPubkeySearch = search.length >= 32 && search.length <= 44;
+  const isRegistryMatch = filteredEntries.some(
+    (e) => e.poolId === search
+  );
+
+  // Handle pasting a pool address
+  const handlePastedAddress = async () => {
+    if (!isPubkeySearch || isRegistryMatch) return;
+
+    setPasteLoading(true);
+    setPasteError(null);
+
+    try {
+      const pubkey = new PublicKey(search);
+      const valid = await isValidAmmPool(connection, pubkey);
+      if (valid) {
+        onSelect({
+          poolId: search,
+          symbol: "???",
+          name: `Custom Pool`,
+          coinMint: "",
+        });
+      } else {
+        setPasteError("Not a valid AMM pool address");
+      }
+    } catch {
+      setPasteError("Invalid address format");
+    } finally {
+      setPasteLoading(false);
+    }
+  };
 
   return (
     <motion.div
@@ -37,7 +88,7 @@ export function TokenSelectModal({ onSelect, onClose, selectedMint }: TokenSelec
       onClick={onClose}
     >
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+      <div className="absolute inset-0 bg-black/70" />
 
       {/* Modal */}
       <motion.div
@@ -50,7 +101,10 @@ export function TokenSelectModal({ onSelect, onClose, selectedMint }: TokenSelec
       >
         {/* Header */}
         <div className="flex items-center justify-between p-5 pb-3">
-          <h3 className="text-lg font-semibold">Select Token</h3>
+          <div>
+            <h3 className="text-lg font-semibold">Select market</h3>
+            <p className="text-xs text-dark-500 mt-1">Choose a configured pool or paste a pool address from your AMM.</p>
+          </div>
           <button
             onClick={onClose}
             className="p-2 rounded-xl hover:bg-surface-raised transition-colors text-dark-400 hover:text-white"
@@ -61,7 +115,7 @@ export function TokenSelectModal({ onSelect, onClose, selectedMint }: TokenSelec
           </button>
         </div>
 
-        {/* Search */}
+        {/* Search / paste address */}
         <div className="px-5 pb-3">
           <div className="relative">
             <svg
@@ -79,84 +133,101 @@ export function TokenSelectModal({ onSelect, onClose, selectedMint }: TokenSelec
             <input
               ref={inputRef}
               type="text"
-              placeholder="Search by name or paste address"
+              placeholder="Search market or paste pool address"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPasteError(null);
+              }}
               className="w-full pl-10 pr-4 py-3 rounded-xl bg-surface-raised border border-surface-border text-sm outline-none focus:border-accent/30 placeholder:text-dark-500 transition-colors"
             />
           </div>
+
+          {/* Paste-address action */}
+          {isPubkeySearch && !isRegistryMatch && (
+            <div className="mt-2">
+              <button
+                onClick={handlePastedAddress}
+                disabled={pasteLoading}
+                className="w-full py-2 rounded-lg text-xs font-medium bg-accent/10 border border-accent/30 text-accent hover:bg-accent/20 transition-all duration-200 disabled:opacity-50"
+              >
+                {pasteLoading ? "Validating..." : "Load market from address"}
+              </button>
+              {pasteError && (
+                <p className="mt-1.5 text-xs text-red-400">{pasteError}</p>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Popular chips */}
         <div className="px-5 pb-3 flex gap-2 flex-wrap">
-          {POPULAR_TOKENS.slice(0, 4).map((token) => (
+          {POOL_REGISTRY.slice(0, 4).map((entry) => (
             <button
-              key={token.mint}
-              onClick={() => onSelect(token)}
+              key={entry.poolId}
+              onClick={() => onSelect(entry)}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-sm font-medium transition-all duration-200
-                ${token.mint === selectedMint
+                ${entry.poolId === selectedPoolId
                   ? "bg-accent/10 border-accent/30 text-accent"
                   : "bg-surface-raised border-surface-border text-dark-300 hover:border-accent/20 hover:text-white"
                 }`}
             >
-              <Image
-                src={token.logoURI}
-                alt={token.symbol}
-                width={18}
-                height={18}
-                className="rounded-full"
-              />
-              {token.symbol}
+              {entry.logoURI && (
+                <TokenLogo
+                  src={entry.logoURI}
+                  alt={entry.symbol}
+                  size={18}
+                  className="rounded-full"
+                />
+              )}
+              {entry.symbol}
             </button>
           ))}
         </div>
 
         <div className="border-t border-surface-border/50" />
 
-        {/* Token List */}
+        {/* Pool list */}
         <div className="max-h-[320px] overflow-y-auto py-2">
-          {filteredTokens.length === 0 ? (
+          {filteredEntries.length === 0 && !isPubkeySearch ? (
             <div className="py-12 text-center text-dark-500 text-sm">
-              No tokens found
+              {POOL_REGISTRY.length === 0
+                ? "No markets configured. Paste a devnet pool address above."
+                : "No tokens found"}
             </div>
           ) : (
-            filteredTokens.map((token, i) => (
-              <motion.button
-                key={token.mint}
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: i * 0.03 }}
-                onClick={() => onSelect(token)}
+            filteredEntries.map((entry) => (
+              <button
+                key={entry.poolId}
+                onClick={() => onSelect(entry)}
                 className={`w-full flex items-center gap-3 px-5 py-3 hover:bg-surface-raised/80 transition-all duration-150
-                  ${token.mint === selectedMint ? "bg-accent/5" : ""}`}
+                  ${entry.poolId === selectedPoolId ? "bg-accent/5" : ""}`}
               >
                 <div className="w-9 h-9 rounded-full overflow-hidden bg-surface-border flex-shrink-0">
-                  <Image
-                    src={token.logoURI}
-                    alt={token.symbol}
-                    width={36}
-                    height={36}
-                    className="w-full h-full object-cover"
-                  />
+                  {entry.logoURI ? (
+                    <TokenLogo
+                      src={entry.logoURI}
+                      alt={entry.symbol}
+                      size={36}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-dark-500 text-xs font-bold">
+                      ?
+                    </div>
+                  )}
                 </div>
                 <div className="flex-1 text-left">
-                  <div className="font-semibold text-sm">{token.symbol}</div>
-                  <div className="text-xs text-dark-500">{token.name}</div>
+                  <div className="font-semibold text-sm">{entry.symbol}</div>
+                  <div className="text-xs text-dark-500">{entry.name}</div>
                 </div>
-                {token.balance !== undefined && (
-                  <div className="text-right">
-                    <div className="text-sm font-mono">{token.balance.toFixed(4)}</div>
-                    {token.usdPrice && (
-                      <div className="text-xs text-dark-500">
-                        ${(token.balance * token.usdPrice).toFixed(2)}
-                      </div>
-                    )}
-                  </div>
-                )}
-                {token.mint === selectedMint && (
+                <div className="text-xs text-dark-500 font-mono max-w-[80px] truncate">
+                  {entry.poolId.slice(0, 4)}...{entry.poolId.slice(-4)}
+                </div>
+                {entry.poolId === selectedPoolId && (
                   <div className="w-2 h-2 rounded-full bg-accent" />
                 )}
-              </motion.button>
+              </button>
             ))
           )}
         </div>
